@@ -180,4 +180,7 @@ message(paste(
     file.path(output_dir, "max_coverage_per_chromosome.txt")
 ))
 
+rm(list = ls())
+gc()
+
 # End of script

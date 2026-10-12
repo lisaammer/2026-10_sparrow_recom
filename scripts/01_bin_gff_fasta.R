@@ -159,13 +159,16 @@ fasta <- readDNAStringSet(file.path(input_dir, fasta_file), format = "fasta")
 names(fasta) <- sub(" .*", "", names(fasta))
 
 # Map and filter target chromosomes
-fasta_mapped <- fasta[names(fasta) %in% report$RefSeq.seq.accession]
-names(fasta_mapped) <- report$Chromosome.name[match(names(fasta_mapped), report$RefSeq.seq.accession)]
+fasta_mapped <- fasta[names(fasta) %in% report$refseqAccession]
+names(fasta_mapped) <- report$chrName[match(names(fasta_mapped), report$refseqAccession)]
 
 sorted_fasta <- fasta_mapped[names(fasta_mapped) %in% target_chroms]
 sorted_fasta <- sorted_fasta[match(intersect(target_chroms, names(sorted_fasta)), names(sorted_fasta))]
 
 # Save output FASTA
 writeXStringSet(sorted_fasta, file.path(output_dir, "filtered_fasta.fasta"), format = "fasta")
+
+rm(list = ls())
+gc()
 
 # End of script

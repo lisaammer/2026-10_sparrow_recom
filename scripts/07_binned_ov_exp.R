@@ -73,7 +73,7 @@ tpm_matrix[is.na(tpm_matrix)] <- 0 # Handle cells with 0 total counts
 # Get individual IDs from Seurat metadata
 cell_info <- germ@meta.data %>%
     tibble::rownames_to_column("cell_id") %>%
-    dplyr::select(cell_id, sample_id)
+    dplyr::select(cell_id, sample_id = orig.ident)
 
 unique_samples <- unique(cell_info$sample_id)
 
@@ -212,56 +212,6 @@ write.table(
     sep = "\t",
     row.names = FALSE,
     quote = FALSE
-)
-
-# =============================================================================
-# CGI PROMOTER ACTIVITY SPLIT (Using pre-calculated has_cgi status)
-# =============================================================================
-
-# Join activity data with the pre-calculated has_cgi and gene_biotype from gene_metadata
-gene_activity_cgi <- gene_tpm_by_ind %>%
-    left_join(
-        gene_metadata %>%
-            dplyr::select(gene, chromosome, bin, has_cgi, gene_biotype),
-        by = "gene"
-    )
-
-# Calculate bin-level metrics using has_cgi
-binned_cgi_split <- gene_activity_cgi %>%
-    group_by(chromosome, bin) %>%
-    summarise(
-        # ALL active genes
-        all_active_with_cgi = sum(is_active == 1 & has_cgi == TRUE, na.rm = TRUE),
-        all_active_no_cgi = sum(is_active == 1 & has_cgi == FALSE, na.rm = TRUE),
-
-        # PROTEIN-CODING active genes
-        pc_active_with_cgi = sum(is_active == 1 & has_cgi == TRUE & gene_biotype == "protein_coding", na.rm = TRUE),
-        pc_active_no_cgi = sum(is_active == 1 & has_cgi == FALSE & gene_biotype == "protein_coding", na.rm = TRUE),
-
-        # NON PROTEIN-CODING active genes (everything else)
-        not_pc_active_with_cgi = sum(is_active == 1 & has_cgi == TRUE & gene_biotype != "protein_coding", na.rm = TRUE),
-        not_pc_active_no_cgi = sum(is_active == 1 & has_cgi == FALSE & gene_biotype != "protein_coding", na.rm = TRUE),
-        .groups = "drop"
-    ) %>%
-    mutate(chromosome = as.character(chromosome))
-
-# Merge with bin_lut to ensure zero-counts are preserved
-binned_cgi_final <- bin_lut %>%
-    mutate(chromosome = as.character(chromosome)) %>%
-    left_join(binned_cgi_split, by = c("chromosome", "bin")) %>%
-    mutate(across(starts_with(c("all_", "pc_", "not_pc_")), ~ tidyr::replace_na(., 0))) %>%
-    dplyr::select(
-        chromosome, bin,
-        all_active_with_cgi, all_active_no_cgi,
-        pc_active_with_cgi, pc_active_no_cgi,
-        not_pc_active_with_cgi, not_pc_active_no_cgi
-    )
-
-# Save the variables for your INLA model
-write.table(
-    binned_cgi_final,
-    file.path(output_dir, "binned_active_genes_by_promoter_type.txt"),
-    sep = "\t", row.names = FALSE, quote = FALSE
 )
 
 message(">>> Germline TPM and CGI activity pipeline complete!")

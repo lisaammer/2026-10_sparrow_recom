@@ -35,7 +35,7 @@ coverage_data <- coverage_data %>%
     mutate(pair_id = paste0(parent, "_", offspring))
 
 # Filter bin_lut to only include chromosomes present in coverage_data
-bin_lut <- bin_lut %>%
+bin_lut_co <- bin_lut %>%
     filter(chromosome %in% coverage_data$chromosome)
 
 # Calculate per-chromosome denominators
@@ -57,8 +57,8 @@ cvg_depth <- coverage(cov_gr_reduced)
 
 # Define bins
 bin_gr <- GRanges(
-    seqnames = bin_lut$chromosome,
-    ranges = IRanges(bin_lut$bin_start, bin_lut$bin_end)
+    seqnames =  bin_lut_co$chromosome,
+    ranges = IRanges(bin_lut_co$bin_start, bin_lut_co$bin_end)
 )
 
 # Restrict bin_gr to only the chromosomes present in cvg_depth
@@ -69,7 +69,7 @@ seqlevels(bin_gr, pruning.mode = "tidy") <- names(cvg_depth)
 bin_res <- binnedAverage(bin_gr, cvg_depth, "avg_depth")
 
 # Normalise average depth by the total number of pairs for that chromosome to get average coverage per pair
-final_df <- as.data.frame(bin_res) %>%
+coverage_df <- as.data.frame(bin_res) %>%
     mutate(chromosome = as.character(seqnames)) %>%
     left_join(pairs_per_chrom, by = "chromosome") %>%
     mutate(
@@ -83,6 +83,12 @@ final_df <- as.data.frame(bin_res) %>%
     ) %>%
     select(chromosome, bin, avg_cov) %>%
     arrange(chromosome, bin)
+
+# Join back to bin_lut to get binned_coverage for all bins, filling missing values with 0
+final_df <- bin_lut %>%
+    left_join(coverage_df, by = c("chromosome", "bin")) %>%
+    mutate(avg_cov = ifelse(is.na(avg_cov), 0, avg_cov)) %>%
+    select(chromosome, bin, avg_cov)
 
 # Write output
 write.table(final_df, file.path(output_dir, "binned_avg_coverage.txt"),

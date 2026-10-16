@@ -46,7 +46,7 @@ for (chr in unique(bin_lut$chromosome)) {
 
     if (nrow(bins) == 0) next
 
-    # Calculate GC for all bins in this chromosome at once (Vastly Faster)
+    # Calculate GC for all bins in this chromosome at once
     chr_views <- Biostrings::Views(seq, start = bins$bin_start, end = bins$bin_end)
 
     # Calculate frequency for all windows in one command

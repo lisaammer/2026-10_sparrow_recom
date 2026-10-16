@@ -1,5 +1,5 @@
 #### Get binned SNP chip distribution for chromosomes
-#### Created 02/03/2026 by Lisa Ammer
+#### Updated 13/10/2026 by Lisa Ammer
 
 rm(list = ls()) 
 gc()
@@ -32,10 +32,10 @@ colnames(snp_data) <- c("chromosome", "snp_id", "morgan_position", "base_pair_po
 snp_data$chromosome <- as.character(snp_data$chromosome)
 bin_lut$chromosome <- as.character(bin_lut$chromosome)
 
-# Merge snp_data with bin_lut to assign bins to each SNP
+# Merge snp_data to bin_lut to assign bins to each SNP
 # base_pair_position in snp_data should be between bin_start and bin_end in bin_lut for the same chromosome
-binned_snp_data <- snp_data %>%
-    left_join(bin_lut, by = "chromosome") %>%
+binned_snp_data <- bin_lut %>%
+    left_join(snp_data, by = "chromosome") %>%
     filter(base_pair_position >= bin_start & base_pair_position <= bin_end) %>%
     select(chromosome, bin, snp_id, morgan_position, base_pair_position, allele1, allele2)
 

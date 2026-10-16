@@ -61,17 +61,20 @@ trash_gr <- GRanges(
     family = trash_repeats$seq
 )
 
-trash_gr_clean <- unlist(reduce(split(trash_gr, mcols(trash_gr)$family)))
+# Explicitly use GenomicRanges::reduce to avoid purrr conflict
+trash_gr_clean <- unlist(GenomicRanges::reduce(split(trash_gr, mcols(trash_gr)$family)))
 mcols(trash_gr_clean)$family <- names(trash_gr_clean)
 mcols(trash_gr_clean)$source <- "TRASH"
 mcols(trash_gr_clean)$class <- "Satellite_Tandem"
+mcols(trash_gr_clean)$SW_score <- NA_real_
 
 # RepeatMasker GRanges
 te_gr <- GRanges(
     seqnames = te_summary$chromosome,
     ranges = IRanges(start = te_summary$query_start, end = te_summary$query_end),
     class = te_summary$class,
-    family = te_summary$family
+    family = te_summary$family,
+    SW_score = te_summary$SW_score
 )
 mcols(te_gr)$source <- "RepeatMasker"
 
@@ -89,6 +92,7 @@ mcols(overlaps_gr)$family <- paste0(
 )
 mcols(overlaps_gr)$source <- "Hybrid"
 mcols(overlaps_gr)$note <- "Confirmed_by_both"
+mcols(overlaps_gr)$SW_score <- mcols(matched_rm)$SW_score
 
 # Unique TRASH
 unique_trash_gr <- trash_gr_clean[is.na(logical_hits)]
@@ -109,7 +113,7 @@ master_repeats <- bind_rows(
     as.data.frame(unique_rm_gr),
     as.data.frame(overlaps_gr)
 ) %>%
-    dplyr::select(chromosome = seqnames, start, end, class, family, source, note) %>%
+    dplyr::select(chromosome = seqnames, start, end, class, family, source, note, SW_score) %>%
     arrange(chromosome, start)
 
 # Clean Hybrid strings and categories
@@ -123,7 +127,7 @@ master_repeats <- master_repeats %>%
         trash_sequence = ifelse(note == "TRASH_only", family, trash_sequence),
         family = ifelse(note == "TRASH_only", NA_character_, family_clean)
     ) %>%
-    select(chromosome, start, end, class, family, trash_sequence, source, note) %>%
+    select(chromosome, start, end, class, family, trash_sequence, source, note, SW_score) %>%
     mutate(class = str_c(class, "_Repeat")) %>%
     mutate(class = case_when(
         class == "Low_complexity_Repeat" ~ "Low_Complexity_Repeat",
@@ -140,8 +144,7 @@ master_repeats <- master_repeats %>%
 
 # Write master list
 fwrite(master_repeats, file.path(output_dir, "master_repeat_list.txt"), sep = "\t", row.names = FALSE, quote = FALSE)
-message(">>> Master repeat list saved.")
-
+message(">>> Master repeat list saved with SW_score.")
 
 # =============================================================================
 # PART 2: CHROMOSOME WINDOW PLOTS (100kb Windows)
@@ -155,7 +158,8 @@ for (chrom in all_chroms) {
         filter(chromosome == chrom) %>%
         mutate(window = floor(start / 100000) * 100000) %>%
         group_by(window, broad_class) %>%
-        summarise(coverage = sum(end - start + 1) / 100000 * 100, .groups = "drop")
+        summarise(coverage = sum(end - start + 1) / 1000, .groups = "drop") # coverage in kb per 100kb window (%)
+
     p <- ggplot(chrom_data, aes(x = window / 1e6, y = coverage, fill = broad_class)) +
         geom_area(alpha = 0.8, linewidth = 0.2) +
         facet_grid(broad_class ~ ., scales = "free_y") +
@@ -242,7 +246,7 @@ writeLines(c(
     format_df_for_file(family_summary)
 ), con = summary_output_file)
 
-message(">>> Pipeline execution complete successfully!")
+message(">>> Pipeline execution completed successfully!")
 
 rm(list = ls())
 gc()

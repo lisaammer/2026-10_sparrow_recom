@@ -20,8 +20,8 @@ library(jsonlite)
 input_dir  <- "/mnt/loki/johnston/lisa/sparrow/reference/hap1"
 output_dir <- "/mnt/loki/johnston/lisa/sparrow/2026-10_sparrow_recom/1_in_/changed" 
 
-# Target Chromosome Selection (1:25, 27, 28, 32)
-target_chroms <- c(as.character(1:25), "27", "28", "32")
+# Target Chromosome Selection (1:37, Z, W)
+target_chroms <- c(as.character(1:37), "Z", "W")
 
 # ==================================================
 # PART 1: Process Sequence Report & Create Bin Lookup
@@ -91,11 +91,13 @@ lookup <- report[, c("refseqAccession", "chrName")]
 gff_mapped <- gff_df %>%
   inner_join(lookup, by = c("seqnames" = "refseqAccession")) %>%
   dplyr::rename(chromosome = chrName) %>%
-  filter(chromosome %in% target_chroms)
+  filter(chromosome %in% target_chroms) %>%
+  filter(chromosome != "Unknown")
 
 # 5. Verify the mapped output
 head(gff_mapped[, c("seqnames", "chromosome", "start", "end", "type")])
-head(gff_mapped[c("chromosome" == "4"), c("seqnames", "chromosome", "start", "end", "type")])
+head(gff_mapped[gff_mapped$chromosome == "4", c("seqnames", "chromosome", "start", "end", "type")])
+head(gff_mapped[gff_mapped$chromosome == "37", c("seqnames", "chromosome", "start", "end", "type")])
 
 # --- Section A: Extract Annotated TSS (All Transcripts) ---
 tss_df <- gff_mapped %>%
@@ -112,6 +114,7 @@ tss_df <- gff_mapped %>%
   arrange(suppressWarnings(as.numeric(chromosome)), bed_start)
 
 tss_df %>% filter(chromosome == "4") %>% head()
+tss_df %>% filter(chromosome == "37") %>% head()
 
 write.table(tss_df, file.path(output_dir, "extracted_tss_target_chroms.bed"), 
             sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)

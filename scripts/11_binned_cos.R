@@ -72,8 +72,7 @@ message(">>> Step 2: Building population crossover datasets...")
 
 # Load bin_lut
 bin_lut <- read.table(file.path(input_dir, "changed/bin_lut.txt"), header = TRUE, sep = "\t") %>%
-    mutate(chromosome = as.character(chromosome)) %>%
-    filter(chromosome %in% co_data$chromosome)
+    mutate(chromosome = as.character(chromosome))
 
 # Helper functions for dataset info and summarizing
 get_dataset_info <- function(data) {

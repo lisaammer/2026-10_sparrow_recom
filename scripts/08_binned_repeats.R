@@ -34,7 +34,9 @@ repeats <- data.table::fread(file.path(input_dir, "master_repeat_list.txt"),
         broad_class = tidyr::replace_na(broad_class, "Other/Unknown Repeat"),
         broad_class = if_else(broad_class == "" | broad_class == "NA", "Other/Unknown Repeat", broad_class)
     ) %>%
-    filter(!is.na(broad_class))
+    filter(!is.na(broad_class)
+    ) %>% 
+    filter(SW_score >= 200)
 
 # Only keep chromosomes present in both datasets
 bin_lut <- bin_lut %>%
